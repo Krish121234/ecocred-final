@@ -59,46 +59,34 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input }) => {
-        try {
-          // Hash password
-          const passwordHash = await bcrypt.hash(input.password, 10);
+        const database = await db.getDb();
+        if (!database) throw new Error("Database unavailable");
 
-          // Create user
-          const result = await db.getDb();
-          if (!result) throw new Error("Database unavailable");
+        // Check if phone already registered
+        const existing = await db.getUserByPhone(input.phone);
+        if (existing) throw new Error("Phone number already registered");
 
-          // For now, using Manus OAuth - but this endpoint can be extended
-          // In a real scenario, you'd insert into users table directly
-          const user = {
-            openId: `phone-${input.phone}`,
-            name: input.name,
-            phone: input.phone,
-            passwordHash,
-            role: input.role,
-            credits: 0,
-            housesCovered: 0,
-            isActive: 1,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            lastSignedIn: new Date(),
-          };
+        // Hash password and insert user
+        const passwordHash = await bcrypt.hash(input.password, 10);
+        await db.upsertUser({
+          openId: `phone-${input.phone}`,
+          name: input.name,
+          phone: input.phone,
+          passwordHash,
+          role: input.role,
+          isActive: 1,
+          lastSignedIn: new Date(),
+        });
 
-          // This would be inserted into the database
-          // For now, return success with token
-          const token = generateToken(1, input.role);
+        const user = await db.getUserByPhone(input.phone);
+        if (!user) throw new Error("Registration failed");
 
-          return {
-            success: true,
-            token,
-            user: {
-              name: input.name,
-              phone: input.phone,
-              role: input.role,
-            },
-          };
-        } catch (error) {
-          throw new Error("Registration failed");
-        }
+        const token = generateToken(user.id, user.role);
+        return {
+          success: true,
+          token,
+          user: { id: user.id, name: user.name, phone: user.phone, role: user.role },
+        };
       }),
 
     /**
@@ -112,26 +100,25 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input }) => {
-        try {
-          // This is a placeholder - in production, query the database
-          // For now, return a mock token
-          const token = generateToken(1, "worker");
+        const user = await db.getUserByPhone(input.phone);
+        if (!user || !user.passwordHash) throw new Error("Invalid phone or password");
 
-          return {
-            success: true,
-            token,
-            user: {
-              id: 1,
-              name: "Sample Worker",
-              phone: input.phone,
-              role: "worker",
-              credits: 0,
-              housesCovered: 0,
-            },
-          };
-        } catch (error) {
-          throw new Error("Login failed");
-        }
+        const passwordMatch = await bcrypt.compare(input.password, user.passwordHash);
+        if (!passwordMatch) throw new Error("Invalid phone or password");
+
+        const token = generateToken(user.id, user.role);
+        return {
+          success: true,
+          token,
+          user: {
+            id: user.id,
+            name: user.name,
+            phone: user.phone,
+            role: user.role,
+            credits: user.credits,
+            housesCovered: user.housesCovered,
+          },
+        };
       }),
   }),
 

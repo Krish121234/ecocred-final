@@ -14,7 +14,7 @@ function createMockContext(overrides?: Partial<TrpcContext>): TrpcContext {
     } as TrpcContext["req"],
     res: {
       clearCookie: () => {},
-    } as TrpcContext["res"],
+    } as unknown as TrpcContext["res"],
     ...overrides,
   };
 }
@@ -29,11 +29,18 @@ function createAuthenticatedContext(userId: number = 1): TrpcContext {
       openId: `test-user-${userId}`,
       email: `test${userId}@example.com`,
       name: `Test User ${userId}`,
+      phone: null,
+      passwordHash: null,
       loginMethod: "manual",
-      role: "user",
+      role: "user" as const,
+      credits: 0,
+      housesCovered: 0,
+      assignedRouteId: null,
+      isActive: 1,
       createdAt: new Date(),
       updatedAt: new Date(),
       lastSignedIn: new Date(),
+      lastSeen: null,
     },
   });
 }
@@ -72,7 +79,26 @@ describe("EcoCred Features", () => {
 
   describe("Worker Dashboard", () => {
     it("should retrieve worker dashboard data", async () => {
-      const ctx = createAuthenticatedContext(1);
+      const ctx = createMockContext({
+        user: {
+          id: 1,
+          openId: "test-worker-1",
+          email: "worker@example.com",
+          name: "Test Worker",
+          phone: null,
+          passwordHash: null,
+          loginMethod: "manual",
+          role: "worker" as const,
+          credits: 0,
+          housesCovered: 0,
+          assignedRouteId: null,
+          isActive: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          lastSignedIn: new Date(),
+          lastSeen: null,
+        },
+      });
       const caller = appRouter.createCaller(ctx);
 
       try {
@@ -114,7 +140,7 @@ describe("EcoCred Features", () => {
       const caller = appRouter.createCaller(ctx);
 
       try {
-        const leaderboard = await caller.leaderboard.getByCredits();
+        const leaderboard = await caller.leaderboard.getByCredits({ limit: 50 });
         expect(Array.isArray(leaderboard)).toBe(true);
       } catch (error) {
         // Expected if database is not configured
@@ -127,7 +153,7 @@ describe("EcoCred Features", () => {
       const caller = appRouter.createCaller(ctx);
 
       try {
-        const leaderboard = await caller.leaderboard.getByHouses();
+        const leaderboard = await caller.leaderboard.getByHouses({ limit: 50 });
         expect(Array.isArray(leaderboard)).toBe(true);
       } catch (error) {
         // Expected if database is not configured
@@ -138,8 +164,26 @@ describe("EcoCred Features", () => {
 
   describe("Admin Functions", () => {
     it("should get workers list for admin", async () => {
-      const ctx = createAuthenticatedContext(1);
-      ctx.user!.role = "admin";
+      const ctx = createMockContext({
+        user: {
+          id: 1,
+          openId: "test-admin-1",
+          email: "admin@example.com",
+          name: "Test Admin",
+          phone: null,
+          passwordHash: null,
+          loginMethod: "manual",
+          role: "admin" as const,
+          credits: 0,
+          housesCovered: 0,
+          assignedRouteId: null,
+          isActive: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          lastSignedIn: new Date(),
+          lastSeen: null,
+        },
+      });
       const caller = appRouter.createCaller(ctx);
 
       try {
@@ -152,8 +196,26 @@ describe("EcoCred Features", () => {
     });
 
     it("should get live GPS locations for admin", async () => {
-      const ctx = createAuthenticatedContext(1);
-      ctx.user!.role = "admin";
+      const ctx = createMockContext({
+        user: {
+          id: 1,
+          openId: "test-admin-1",
+          email: "admin@example.com",
+          name: "Test Admin",
+          phone: null,
+          passwordHash: null,
+          loginMethod: "manual",
+          role: "admin" as const,
+          credits: 0,
+          housesCovered: 0,
+          assignedRouteId: null,
+          isActive: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          lastSignedIn: new Date(),
+          lastSeen: null,
+        },
+      });
       const caller = appRouter.createCaller(ctx);
 
       try {
@@ -168,11 +230,30 @@ describe("EcoCred Features", () => {
 
   describe("Rewards System", () => {
     it("should retrieve rewards catalog", async () => {
-      const ctx = createAuthenticatedContext(1);
+      const ctx = createMockContext({
+        user: {
+          id: 1,
+          openId: "test-worker-1",
+          email: "worker@example.com",
+          name: "Test Worker",
+          phone: null,
+          passwordHash: null,
+          loginMethod: "manual",
+          role: "worker" as const,
+          credits: 0,
+          housesCovered: 0,
+          assignedRouteId: null,
+          isActive: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          lastSignedIn: new Date(),
+          lastSeen: null,
+        },
+      });
       const caller = appRouter.createCaller(ctx);
 
       try {
-        const rewards = await caller.worker.getRewardsCatalog();
+        const rewards = await caller.worker.getRewards();
         expect(Array.isArray(rewards)).toBe(true);
       } catch (error) {
         // Expected if database is not configured
@@ -181,11 +262,30 @@ describe("EcoCred Features", () => {
     });
 
     it("should redeem a reward", async () => {
-      const ctx = createAuthenticatedContext(1);
+      const ctx = createMockContext({
+        user: {
+          id: 1,
+          openId: "test-worker-1",
+          email: "worker@example.com",
+          name: "Test Worker",
+          phone: null,
+          passwordHash: null,
+          loginMethod: "manual",
+          role: "worker" as const,
+          credits: 0,
+          housesCovered: 0,
+          assignedRouteId: null,
+          isActive: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          lastSignedIn: new Date(),
+          lastSeen: null,
+        },
+      });
       const caller = appRouter.createCaller(ctx);
 
       try {
-        const result = await caller.worker.redeemReward({ rewardId: 1 });
+        const result = await caller.worker.redeemReward({ rewardId: 1, creditsRequired: 10 });
         expect(result).toBeDefined();
       } catch (error) {
         // Expected if database is not configured
@@ -196,11 +296,30 @@ describe("EcoCred Features", () => {
 
   describe("Route Management", () => {
     it("should get assigned routes for worker", async () => {
-      const ctx = createAuthenticatedContext(1);
+      const ctx = createMockContext({
+        user: {
+          id: 1,
+          openId: "test-worker-1",
+          email: "worker@example.com",
+          name: "Test Worker",
+          phone: null,
+          passwordHash: null,
+          loginMethod: "manual",
+          role: "worker" as const,
+          credits: 0,
+          housesCovered: 0,
+          assignedRouteId: null,
+          isActive: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          lastSignedIn: new Date(),
+          lastSeen: null,
+        },
+      });
       const caller = appRouter.createCaller(ctx);
 
       try {
-        const routes = await caller.worker.getAssignedRoutes();
+        const routes = await caller.worker.getRoutes();
         expect(Array.isArray(routes)).toBe(true);
       } catch (error) {
         // Expected if database is not configured
